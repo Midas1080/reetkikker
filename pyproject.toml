@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "reetkikker"
+version = "0.1.0"
+description = "Pond Medical's first game!"
+authors = ["Rutger van de Leur <rutgervandeleur@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+pygame = "^2.6.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
