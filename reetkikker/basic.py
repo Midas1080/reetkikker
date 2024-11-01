@@ -1,6 +1,14 @@
 # Example file showing a circle moving on screen
 import pygame
-from reetkikker.entities import Player
+from reetkikker.entities import ReetKikker, default_renderer
+
+controls = {
+    "up": pygame.K_w,
+    "right": pygame.K_d,
+    "down": pygame.K_s,
+    "left": pygame.K_a
+
+}
 
 # pygame setup
 pygame.init()
@@ -11,7 +19,7 @@ dt = 10
 
 player_pos = pygame.Vector2(screen.get_width() / 2, screen.get_height() / 2)
 player_pos1 = pygame.Vector2(screen.get_width() / 4, screen.get_height() / 4)
-p1 = Player(screen, player_pos)
+p1 = ReetKikker("green", 40, player_pos1, controls, 300)
 
 while running:
     # poll for events
@@ -20,34 +28,11 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-    # screen.fill("purple")
-    # fill the screen with a color to wipe away anything from last frame
+    screen.fill("black")
     keys = pygame.key.get_pressed()
-    p1.update(dt, keys)
+    default_renderer(p1, screen)
+    p1.update(dt)
 
-    # pygame.draw.circle(screen, "red", player_pos, 40)
-    # pygame.draw.circle(screen, "red", player_pos1, 40)
-
-    # keys = pygame.key.get_pressed()
-    # if keys[pygame.K_w]:
-    #     player_pos.y -= 300 * dt
-    # if keys[pygame.K_s]:
-    #     player_pos.y += 300 * dt
-    # if keys[pygame.K_a]:
-    #     player_pos.x -= 300 * dt
-    # if keys[pygame.K_d]:
-    #     player_pos.x += 300 * dt
-    #
-    # if keys[pygame.K_DOWN]:
-    #     player_pos1.y -= 300 * dt
-    # if keys[pygame.K_s]:
-    #     player_pos.y += 300 * dt
-    # if keys[pygame.K_a]:
-    #     player_pos.x -= 300 * dt
-    # if keys[pygame.K_d]:
-    #     player_pos.x += 300 * dt
-
-    # flip() the display to put your work on screen
     pygame.display.flip()
 
     # limits FPS to 60
