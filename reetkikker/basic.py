@@ -6,7 +6,8 @@ controls = {
     "up": pygame.K_w,
     "right": pygame.K_d,
     "down": pygame.K_s,
-    "left": pygame.K_a
+    "left": pygame.K_a,
+    "lick": pygame.K_SPACE
 
 }
 
