@@ -74,7 +74,7 @@ class ReetKikker(Entity):
         if keys[self.key_binding['left']]:
             self.position.x -= self.movement_speed * dt
         if keys[self.key_binding['lick']]:
-            self.tongue = Tongue("red", 10, self.position.copy(), self.key_binding, self.movement_speed)
+            self.tongue = Tongue("red", 10, self.position.copy(), self.key_binding, self.movement_speed * 1.5)
 
     def get_render_information(self) -> Iterable[RenderInformation]:
         own = super().get_render_information()
@@ -99,6 +99,7 @@ class Tongue(Entity):
                  movement_speed: int):
         super().__init__(color, radius, position, key_bindings, movement_speed)
         self.tongue: Optional[Entity] = None
+        self.retracting = False
 
     def get_render_information(self) -> Iterable[RenderInformation]:
         own = super().get_render_information()
@@ -106,7 +107,7 @@ class Tongue(Entity):
 
     def update_self(self, dt: int) -> None:
         keys = pygame.key.get_pressed()
-        if not keys[self.key_binding['lick']]:  # destruct tongue
+        if not keys[self.key_binding['lick']] or self.retracting:  # destruct tongue
             raise TongueInactiveException()
         nw_position = self.position.copy()
         if keys[self.key_binding['up']]:
@@ -122,6 +123,10 @@ class Tongue(Entity):
 
     def update(self, dt: int) -> None:
         if self.tongue:  # hand over control to tip of tongue
-            self.tongue.update(dt)
+            try:
+                self.tongue.update(dt)
+            except TongueInactiveException:
+                self.tongue = None
+                self.retracting = True
         else:
             self.update_self(dt)
