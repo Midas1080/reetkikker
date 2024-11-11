@@ -1,9 +1,10 @@
-from typing import Callable, Protocol, TypedDict, Optional, Iterable
+from typing import Callable, Protocol, TypedDict, Optional, Iterable, Literal
 from pygame import Surface, Vector2
 from itertools import chain
 import pygame
 from pygame.sprite import Sprite
 
+Direction = Optional[Literal["up", "right", "down", "left"]]
 renderer = Callable[['Renderable', Surface], None]
 
 
@@ -37,17 +38,18 @@ class Updatable(Protocol):
 
 class Entity(Sprite, Updatable, Renderable):
     def __init__(self, color: str, radius: int, position: Vector2, key_bindings: KeyBindings,
-                 movement_speed: int):
+                 movement_speed: int, direction=None):
         super().__init__()
         self.color = color
         self.radius = radius
         self.position = position
         self.key_binding = key_bindings
         self.movement_speed = movement_speed
+        self.direction: Direction = direction
 
     @property
     def rect(self) -> pygame.Rect:
-        return pygame.Rect(self.position, (self.radius//4  , self.radius//4 ))
+        return pygame.Rect(self.position, (self.radius // 4, self.radius // 4))
 
     def update(self, dt: int) -> None:
         pass
@@ -76,18 +78,22 @@ class ReetKikker(Entity):
         keys = pygame.key.get_pressed()
         if keys[self.key_binding['up']]:
             self.position.y += self.movement_speed * dt
+            self.direction = "up"
         if keys[self.key_binding['right']]:
             self.position.x += self.movement_speed * dt
+            self.direction = "right"
         if keys[self.key_binding['down']]:
             self.position.y -= self.movement_speed * dt
+            self.direction = "down"
         if keys[self.key_binding['left']]:
             self.position.x -= self.movement_speed * dt
+            self.direction = "left"
         if keys[self.key_binding['lick']]:
             p = self.position.copy()
             p.x += self.radius
             p.y += self.radius
             self.tongue = Tongue("red", 5, p, self.key_binding, self.movement_speed * 1.5,
-                                 self.tong_group)
+                                 self.tong_group, direction=self.direction)
 
     def get_render_information(self) -> Iterable[RenderInformation]:
         own = super().get_render_information()
@@ -109,12 +115,13 @@ class ReetKikker(Entity):
 
 class Tongue(Entity):
     def __init__(self, color: str, radius: int, position: Vector2, key_bindings: KeyBindings,
-                 movement_speed: int, tongue_group: pygame.sprite.Group):
-        super().__init__(color, radius, position, key_bindings, movement_speed)
+                 movement_speed: int, tongue_group: pygame.sprite.Group, direction="up"):
+        super().__init__(color, radius, position, key_bindings, movement_speed, direction=direction)
         self.tongue_group = tongue_group
         self.tongue: Optional[Entity] = None
         self.retracting = bool(pygame.sprite.spritecollideany(self, tongue_group))
         self.add(tongue_group)
+        self.direction = direction
 
     def get_render_information(self) -> Iterable[RenderInformation]:
         own = super().get_render_information()
@@ -124,17 +131,31 @@ class Tongue(Entity):
         keys = pygame.key.get_pressed()
         if not keys[self.key_binding['lick']] or self.retracting:  # destruct tongue
             raise TongueInactiveException()
-        nw_position = self.position.copy()
+        direction = self.direction
         if keys[self.key_binding['up']]:
-            nw_position.y += self.radius * 2
+            direction = "up"
         elif keys[self.key_binding['right']]:
-            nw_position.x += self.radius * 2
+            direction = "right"
         elif keys[self.key_binding['down']]:
-            nw_position.y -= self.radius * 2
+            direction = "down"
         elif keys[self.key_binding['left']]:
-            nw_position.x -= self.radius * 2
+            direction = "left"
+        nw_position = self.update_position(direction)
         # spawn new tip of tongue
-        self.tongue = Tongue(self.color, self.radius, nw_position, self.key_binding, self.movement_speed, self.tongue_group)
+        self.tongue = Tongue(self.color, self.radius, nw_position, self.key_binding, self.movement_speed,
+                             self.tongue_group, direction=direction)
+
+    def update_position(self, direction: Direction) -> Vector2:
+        nw_position = self.position.copy()
+        if direction == "up":
+            nw_position.y += self.radius * 2
+        elif direction == "right":
+            nw_position.x += self.radius * 2
+        elif direction == "down":
+            nw_position.y -= self.radius * 2
+        elif direction == "left":
+            nw_position.x -= self.radius * 2
+        return nw_position
 
     def update(self, dt: int) -> None:
         if self.tongue:  # hand over control to tip of tongue
