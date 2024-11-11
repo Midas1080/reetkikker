@@ -11,6 +11,9 @@ python = "^3.8"
 pygame = "^2.6.1"
 
 
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.13.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
