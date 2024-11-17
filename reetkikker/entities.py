@@ -1,7 +1,7 @@
-from typing import Callable, Protocol, TypedDict, Optional, Iterable, Literal, Any
+from typing import Callable, Protocol, TypedDict, Optional, Literal, Any
 from pygame import Surface, Vector2
 import pygame
-from pygame.sprite import Sprite
+from pygame.sprite import Sprite, Group
 
 Direction = Optional[Literal["up", "right", "down", "left"]]
 renderer = Callable[[Any, Surface], None]
@@ -34,6 +34,7 @@ class Updatable(Protocol):
 def entity_renderer(e: "Entity", screen: Surface):
     h = 2 * e.radius
     pygame.draw.rect(screen, e.color, pygame.rect.Rect(e.position, (h, h)))
+
 
 # the reetkikker renderer takes recursively care of the tongue members
 def reetkikker_renderer(e: "ReetKikker", screen: Surface):
@@ -70,7 +71,7 @@ class ReetKikker(Entity):
                  movement_speed: int, direction=None, renderer=reetkikker_renderer):
         super().__init__(color, radius, position, key_bindings, movement_speed, direction, renderer)
         self.tongue: Optional[Entity] = None
-        self.tong_group = pygame.sprite.Group()
+        self.tong_group: Group = Group()
 
     def update_self(self, dt):
         keys = pygame.key.get_pressed()
@@ -112,7 +113,7 @@ class Tongue(Entity):
         super().__init__(color, radius, position, key_bindings, movement_speed, direction=direction, renderer=renderer)
         self.tongue_group = tongue_group
         self.tongue: Optional[Entity] = None
-        self.retracting = bool(pygame.sprite.spritecollideany(self, tongue_group))
+        self.retracting = bool(pygame.sprite.spritecollideany(self, tongue_group))  # type: ignore
         self.add(tongue_group)
         self.direction = direction
 
