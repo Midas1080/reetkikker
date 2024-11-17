@@ -1,21 +1,14 @@
-from typing import Callable, Protocol, TypedDict, Optional, Iterable, Literal
+from typing import Callable, Protocol, TypedDict, Optional, Iterable, Literal, Any
 from pygame import Surface, Vector2
-from itertools import chain
 import pygame
 from pygame.sprite import Sprite
 
 Direction = Optional[Literal["up", "right", "down", "left"]]
-renderer = Callable[['Renderable', Surface], None]
+renderer = Callable[[Any, Surface], None]
 
 
 class TongueInactiveException(Exception):
     pass
-
-
-class RenderInformation(TypedDict):
-    color: str
-    radius: int
-    position: Vector2
 
 
 class KeyBindings(TypedDict):
@@ -27,7 +20,8 @@ class KeyBindings(TypedDict):
 
 
 class Renderable(Protocol):
-    def get_render_information(self) -> Iterable[RenderInformation]:
+
+    def render(self, screen: Surface) -> None:
         pass
 
 
@@ -36,9 +30,21 @@ class Updatable(Protocol):
         pass
 
 
+# most basic renderer
+def entity_renderer(e: "Entity", screen: Surface):
+    h = 2 * e.radius
+    pygame.draw.rect(screen, e.color, pygame.rect.Rect(e.position, (h, h)))
+
+# the reetkikker renderer takes recursively care of the tongue members
+def reetkikker_renderer(e: "ReetKikker", screen: Surface):
+    if e.tongue:
+        e.tongue.render(screen)
+    entity_renderer(e, screen)
+
+
 class Entity(Sprite, Updatable, Renderable):
     def __init__(self, color: str, radius: int, position: Vector2, key_bindings: KeyBindings,
-                 movement_speed: int, direction=None):
+                 movement_speed: int, direction=None, renderer: renderer = entity_renderer):
         super().__init__()
         self.color = color
         self.radius = radius
@@ -46,6 +52,7 @@ class Entity(Sprite, Updatable, Renderable):
         self.key_binding = key_bindings
         self.movement_speed = movement_speed
         self.direction: Direction = direction
+        self.renderer = renderer
 
     @property
     def rect(self) -> pygame.Rect:
@@ -54,23 +61,14 @@ class Entity(Sprite, Updatable, Renderable):
     def update(self, dt: int) -> None:
         pass
 
-    def get_render_information(self) -> Iterable[RenderInformation]:
-        x = [{"color": self.color, "radius": self.radius, "position": self.position}]
-        return x
-
-
-def default_renderer(e: Renderable, screen: Surface):
-    to_render = e.get_render_information()
-    for ri in to_render:
-        h = 2 * ri['radius']
-        # pygame.draw.circle(screen, ri['color'], ri['position'], ri['radius'])
-        pygame.draw.rect(screen, ri['color'], pygame.rect.Rect(ri['position'], (h, h)))
+    def render(self, screen: Surface) -> None:
+        self.renderer(self, screen)
 
 
 class ReetKikker(Entity):
     def __init__(self, color: str, radius: int, position: Vector2, key_bindings: KeyBindings,
-                 movement_speed: int):
-        super().__init__(color, radius, position, key_bindings, movement_speed)
+                 movement_speed: int, direction=None, renderer=reetkikker_renderer):
+        super().__init__(color, radius, position, key_bindings, movement_speed, direction, renderer)
         self.tongue: Optional[Entity] = None
         self.tong_group = pygame.sprite.Group()
 
@@ -95,11 +93,6 @@ class ReetKikker(Entity):
             self.tongue = Tongue("red", 5, p, self.key_binding, self.movement_speed * 1.5,
                                  self.tong_group, direction=self.direction)
 
-    def get_render_information(self) -> Iterable[RenderInformation]:
-        own = super().get_render_information()
-        x = chain(own, self.tongue.get_render_information()) if self.tongue else own
-        return x
-
     def update_tongue(self, dt):
         try:
             self.tongue.update(dt)
@@ -115,17 +108,13 @@ class ReetKikker(Entity):
 
 class Tongue(Entity):
     def __init__(self, color: str, radius: int, position: Vector2, key_bindings: KeyBindings,
-                 movement_speed: int, tongue_group: pygame.sprite.Group, direction="up"):
-        super().__init__(color, radius, position, key_bindings, movement_speed, direction=direction)
+                 movement_speed: int, tongue_group: pygame.sprite.Group, direction="up", renderer=reetkikker_renderer):
+        super().__init__(color, radius, position, key_bindings, movement_speed, direction=direction, renderer=renderer)
         self.tongue_group = tongue_group
         self.tongue: Optional[Entity] = None
         self.retracting = bool(pygame.sprite.spritecollideany(self, tongue_group))
         self.add(tongue_group)
         self.direction = direction
-
-    def get_render_information(self) -> Iterable[RenderInformation]:
-        own = super().get_render_information()
-        return chain(own, self.tongue.get_render_information()) if self.tongue else own
 
     def update_self(self, dt: int) -> None:
         keys = pygame.key.get_pressed()

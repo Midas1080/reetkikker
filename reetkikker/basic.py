@@ -1,6 +1,6 @@
 # Example file showing a circle moving on screen
 import pygame
-from reetkikker.entities import ReetKikker, default_renderer
+from reetkikker.entities import ReetKikker
 
 controls = {
     "up": pygame.K_w,
@@ -30,10 +30,8 @@ while running:
             running = False
 
     screen.fill("black")
-    keys = pygame.key.get_pressed()
-    default_renderer(p1, screen)
+    p1.render(screen)
     p1.update(dt)
-
     pygame.display.flip()
 
     # limits FPS to 60
