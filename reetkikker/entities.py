@@ -1,8 +1,9 @@
-from typing import Callable, Protocol, TypedDict, Optional, Literal, Any
+from typing import Callable, Protocol, TypedDict, Optional, Literal, Any, Tuple
 from pygame import Surface, Vector2
 import pygame
 from pygame.sprite import Sprite, Group
 
+Size = Tuple[int, int]
 Direction = Optional[Literal["up", "right", "down", "left"]]
 renderer = Callable[[Any, Surface], None]
 
@@ -40,24 +41,40 @@ def entity_renderer(e: "Entity", screen: Surface):
 def reetkikker_renderer(e: "ReetKikker", screen: Surface):
     if e.tongue:
         e.tongue.render(screen)
-    entity_renderer(e, screen)
+    rotation = {
+        "up": 180,
+        "right": -90,
+        "down": 0,
+        "left": 90
+
+    }
+    scaled = pygame.transform.scale(e.image, e.size)
+    rotated = pygame.transform.rotate(scaled, rotation[e.direction])
+    screen.blit(rotated, e.position)
+
+
+def tongue_renderer(t: "Tongue", screen: Surface):
+    if t.tongue:
+        t.tongue.render(screen)
+    entity_renderer(t, screen)
 
 
 class Entity(Sprite, Updatable, Renderable):
-    def __init__(self, color: str, radius: int, position: Vector2, key_bindings: KeyBindings,
+    image: Surface
+
+    def __init__(self, position: Vector2, size: Size, key_bindings: KeyBindings,
                  movement_speed: int, direction=None, renderer: renderer = entity_renderer):
         super().__init__()
-        self.color = color
-        self.radius = radius
         self.position = position
+        self.size = size
         self.key_binding = key_bindings
         self.movement_speed = movement_speed
-        self.direction: Direction = direction
+        self.direction: Direction = direction or "up"
         self.renderer = renderer
 
     @property
     def rect(self) -> pygame.Rect:
-        return pygame.Rect(self.position, (self.radius // 4, self.radius // 4))
+        return pygame.Rect(self.position, self.size)
 
     def update(self, dt: int) -> None:
         pass
@@ -67,9 +84,11 @@ class Entity(Sprite, Updatable, Renderable):
 
 
 class ReetKikker(Entity):
-    def __init__(self, color: str, radius: int, position: Vector2, key_bindings: KeyBindings,
+    image = pygame.image.load("assets/reetkikker.gif")
+
+    def __init__(self, position: Vector2, size: Size, key_bindings: KeyBindings,
                  movement_speed: int, direction=None, renderer=reetkikker_renderer):
-        super().__init__(color, radius, position, key_bindings, movement_speed, direction, renderer)
+        super().__init__(position, size, key_bindings, movement_speed, direction, renderer)
         self.tongue: Optional[Entity] = None
         self.tong_group: Group = Group()
 
@@ -87,11 +106,11 @@ class ReetKikker(Entity):
         if keys[self.key_binding['left']]:
             self.position.x -= self.movement_speed * dt
             self.direction = "left"
-        if keys[self.key_binding['lick']]:
+        if keys[self.key_binding['lick']]:  # spawn tongue
             p = self.position.copy()
-            p.x += self.radius
-            p.y += self.radius
-            self.tongue = Tongue("red", 5, p, self.key_binding, self.movement_speed * 1.5,
+            p.x += (self.size[0] // 2) - 4  # half tongue size
+            p.y += (self.size[1] // 2) - 4
+            self.tongue = Tongue(p, (9, 9), self.key_binding, self.movement_speed * 2,
                                  self.tong_group, direction=self.direction)
 
     def update_tongue(self, dt):
@@ -99,6 +118,7 @@ class ReetKikker(Entity):
             self.tongue.update(dt)
         except TongueInactiveException:
             self.tongue = None
+            self.tong_group = Group()
 
     def update(self, dt):
         if self.tongue:
@@ -108,9 +128,11 @@ class ReetKikker(Entity):
 
 
 class Tongue(Entity):
-    def __init__(self, color: str, radius: int, position: Vector2, key_bindings: KeyBindings,
+    image = pygame.image.load("assets/tongue.png")
+
+    def __init__(self, position: Vector2, size: Size, key_bindings: KeyBindings,
                  movement_speed: int, tongue_group: pygame.sprite.Group, direction="up", renderer=reetkikker_renderer):
-        super().__init__(color, radius, position, key_bindings, movement_speed, direction=direction, renderer=renderer)
+        super().__init__(position, size, key_bindings, movement_speed, direction=direction, renderer=renderer)
         self.tongue_group = tongue_group
         self.tongue: Optional[Entity] = None
         self.retracting = bool(pygame.sprite.spritecollideany(self, tongue_group))  # type: ignore
@@ -130,21 +152,22 @@ class Tongue(Entity):
             direction = "down"
         elif keys[self.key_binding['left']]:
             direction = "left"
-        nw_position = self.update_position(direction)
+        nw_position = self.update_position(direction)  # type: ignore
         # spawn new tip of tongue
-        self.tongue = Tongue(self.color, self.radius, nw_position, self.key_binding, self.movement_speed,
+        self.tongue = Tongue(nw_position, self.size, self.key_binding, self.movement_speed,
                              self.tongue_group, direction=direction)
 
     def update_position(self, direction: Direction) -> Vector2:
         nw_position = self.position.copy()
+        w, h = self.size
         if direction == "up":
-            nw_position.y += self.radius * 2
+            nw_position.y += h
         elif direction == "right":
-            nw_position.x += self.radius * 2
+            nw_position.x += w
         elif direction == "down":
-            nw_position.y -= self.radius * 2
+            nw_position.y -= h
         elif direction == "left":
-            nw_position.x -= self.radius * 2
+            nw_position.x -= w
         return nw_position
 
     def update(self, dt: int) -> None:
