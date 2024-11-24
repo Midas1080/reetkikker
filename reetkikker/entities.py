@@ -20,6 +20,15 @@ class KeyBindings(TypedDict):
     lick: int
 
 
+DIRECTION_COEFFICIENTS = {
+    "up": (-1, 0),
+    "right": (0, 1),
+    "down": (1, 0),
+    "left": (0, -1)
+
+}
+
+
 class Renderable(Protocol):
 
     def render(self, screen: Surface) -> None:
@@ -42,9 +51,9 @@ def reetkikker_renderer(e: "ReetKikker", screen: Surface):
     if e.tongue:
         e.tongue.render(screen)
     rotation = {
-        "up": 180,
+        "up": 0,
         "right": -90,
-        "down": 0,
+        "down": 180,
         "left": 90
 
     }
@@ -87,31 +96,37 @@ class ReetKikker(Entity):
     image = pygame.image.load("assets/reetkikker.gif")
 
     def __init__(self, position: Vector2, size: Size, key_bindings: KeyBindings,
-                 movement_speed: int, direction=None, renderer=reetkikker_renderer):
+                 movement_speed: int, direction="up", renderer=reetkikker_renderer):
         super().__init__(position, size, key_bindings, movement_speed, direction, renderer)
         self.tongue: Optional[Entity] = None
         self.tong_group: Group = Group()
 
     def update_self(self, dt):
         keys = pygame.key.get_pressed()
-        if keys[self.key_binding['up']]:
-            self.position.y += self.movement_speed * dt
-            self.direction = "up"
-        if keys[self.key_binding['right']]:
-            self.position.x += self.movement_speed * dt
-            self.direction = "right"
-        if keys[self.key_binding['down']]:
-            self.position.y -= self.movement_speed * dt
-            self.direction = "down"
-        if keys[self.key_binding['left']]:
-            self.position.x -= self.movement_speed * dt
-            self.direction = "left"
+        # check if tongue is 'spawned'. Don't move if so
         if keys[self.key_binding['lick']]:  # spawn tongue
             p = self.position.copy()
             p.x += (self.size[0] // 2) - 4  # half tongue size
             p.y += (self.size[1] // 2) - 4
             self.tongue = Tongue(p, (9, 9), self.key_binding, self.movement_speed * 2,
                                  self.tong_group, direction=self.direction)
+            return
+        # No lick condition --> check if we need to move
+        yc, xc = None, None
+        # first check if current direction is still 'selected'
+        if keys[self.key_binding[self.direction]]:  # type: ignore
+            yc, xc = DIRECTION_COEFFICIENTS[self.direction]
+        # else, check remaining direction
+        else:
+            for direction in {'up', 'right', 'down', 'left'} - {self.direction}:
+                if keys[self.key_binding[direction]]:
+                    yc, xc = DIRECTION_COEFFICIENTS[direction]
+                    self.direction = direction
+                    break
+        # make the move
+        if yc is not None and xc is not None:
+            self.position.x += xc * self.movement_speed * dt
+            self.position.y += yc * self.movement_speed * dt
 
     def update_tongue(self, dt):
         try:
@@ -160,14 +175,9 @@ class Tongue(Entity):
     def update_position(self, direction: Direction) -> Vector2:
         nw_position = self.position.copy()
         w, h = self.size
-        if direction == "up":
-            nw_position.y += h
-        elif direction == "right":
-            nw_position.x += w
-        elif direction == "down":
-            nw_position.y -= h
-        elif direction == "left":
-            nw_position.x -= w
+        yc, xc = DIRECTION_COEFFICIENTS[direction]
+        nw_position.x += xc * w
+        nw_position.y += yc * h
         return nw_position
 
     def update(self, dt: int) -> None:

@@ -30,8 +30,8 @@ dt = 10
 player_pos1 = pygame.Vector2(screen.get_width() / 4, screen.get_height() / 4)
 player_pos2 = pygame.Vector2(screen.get_width() / 8, screen.get_height() / 8)
 
-p1 = ReetKikker(player_pos1, (55, 55), controls, 300)
-p2 = ReetKikker(player_pos2, (55, 55), controls2, 300)
+p1 = ReetKikker(player_pos1, (110, 110), controls, 300)
+p2 = ReetKikker(player_pos2, (110, 110), controls2, 300)
 
 while running:
     # poll for events
