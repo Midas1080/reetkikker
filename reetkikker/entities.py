@@ -98,18 +98,34 @@ class ReetKikker(Entity):
     def __init__(self, position: Vector2, size: Size, key_bindings: KeyBindings,
                  movement_speed: int, direction="up", renderer=reetkikker_renderer):
         super().__init__(position, size, key_bindings, movement_speed, direction, renderer)
+        self.tongue_size = (10, 10)
         self.tongue: Optional[Entity] = None
         self.tong_group: Group = Group()
+
+    def spawn_tongue(self):
+        p = self.position.copy()
+        yc, xc = DIRECTION_COEFFICIENTS[self.direction]
+        if xc == 1:
+            p.x += self.size[0]
+        elif xc == -1:
+            p.x -= self.tongue_size[0]
+        else:
+            p.x += self.size[0] // 2 - self.tongue_size[1] // 2
+        if yc == 1:
+            p.y += self.size[0]
+        elif yc == -1:
+            p.y -= self.tongue_size[0]
+        else:
+            p.y += self.size[0] // 2 - self.tongue_size[0] // 2
+        self.tong_group.add(self)
+        self.tongue = Tongue(p, (9, 9), self.key_binding, self.movement_speed * 2,
+                             self.tong_group, direction=self.direction)
 
     def update_self(self, dt):
         keys = pygame.key.get_pressed()
         # check if tongue is 'spawned'. Don't move if so
-        if keys[self.key_binding['lick']]:  # spawn tongue
-            p = self.position.copy()
-            p.x += (self.size[0] // 2) - 4  # half tongue size
-            p.y += (self.size[1] // 2) - 4
-            self.tongue = Tongue(p, (9, 9), self.key_binding, self.movement_speed * 2,
-                                 self.tong_group, direction=self.direction)
+        if keys[self.key_binding['lick']]:
+            self.spawn_tongue()
             return
         # No lick condition --> check if we need to move
         yc, xc = None, None
